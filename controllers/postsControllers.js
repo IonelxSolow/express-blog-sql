@@ -1,49 +1,54 @@
-const postsData = require('../data/postsData')
+const connection = require('../data/db')
+/* const postsData = require('../data/postsData')
+const posts = require('../data/postsData') */
 
 
-function index(req, res) {
-  let filteredPost = postsData;
-  /*   console.log(req); */
-  if (req.query.tags) {
-    /*  console.log('filter the result') */
-    filteredPost = postsData.filter(post => post.tags.includes(req.query.tags))
-    //http://localhost:3000/posts?tags=Torte
-  }
-  res.json(filteredPost);
+function index(req, res) { 
+  const sql = "SELECT * FROM posts";
+  connection.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(result);
+  });
 }
-
 function show(req, res) {
-  const postSlug = req.params.slug
-  const findPost = postsData.find(post => post.slug === postSlug)
-  if (!findPost) {
-    return res.status(404).json({
-      error: '404 Not Found',
-      message: 'Post not found'
-    })
-  }
-  res.json(findPost)
+  const postId = req.params.id; // cambiamo da slug a id
+  const sql = "SELECT * FROM posts WHERE id = ?";
+
+  connection.query(sql, [postId], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        error: '404 Not Found',
+        message: 'Post not found'
+      });
+    }
+
+    res.json(result[0]);
+  });
 }
+
 
 function create(req, res) {
-const title = req.body.title;
-const newSlug = title.toLowerCase().replace(/\s+/g, '-'); 
+  const title = req.body.title;
+  const newSlug = title.toLowerCase().replace(/\s+/g, '-');
 
-const newPost = {
-  title: title,
-  slug: newSlug,
-  content: req.body.content,
-  image: req.body.image,
-  tags: req.body.tags
-}
+  const newPost = {
+    title: title,
+    slug: newSlug,
+    content: req.body.content,
+    image: req.body.image,
+    tags: req.body.tags
+  }
 
-postsData.push(newPost);
+  postsData.push(newPost);
 
-console.log(postsData)
+  console.log(postsData)
 
-res.status(201);
-res.json(newPost)
+  res.status(201);
+  res.json(newPost)
 
- /*  res.send('crea un post') */
+  /*  res.send('crea un post') */
 }
 
 function update(req, res) {
@@ -79,20 +84,20 @@ function modify(req, res) {
   }
   if (req.body.title) {
     findPost.title = req.body.title;
-  } 
-  if(req.body.content){
+  }
+  if (req.body.content) {
     findPost.slug = req.body.slug
   }
   if (req.body.content) {
     findPost.content = req.body.content
   }
-  if(req.body.image) {
+  if (req.body.image) {
     findPost.content = req.body.image
   }
-  if(req.body.tags) {
+  if (req.body.tags) {
     findPost.tags = req.body.tags
   }
- 
+
 
   console.log(findPost)
 
@@ -101,23 +106,12 @@ function modify(req, res) {
 }
 
 function destroy(req, res) {
-  const postSlug = req.params.slug
-  const findPost = postsData.find(post => post.slug === postSlug)
-  if (!findPost) {
-    return res.status(404).json({
-      error: '404 Not Found',
-      message: 'Post not found'
-    })
-  }
-
-  const postIndex = postsData.indexOf(findPost);
-
-  if (postIndex !== -1) {
-    postsData.splice(postIndex, 1);
+  const postId = Number(req.params.id);
+  const sql = 'DELETE FROM posts WHERE id = ?';
+  connection.query(sql, [postId], (err) => {
+    if (err) return res.status(500).json({ error: 'Query failed' })
     res.sendStatus(204);
-  }
-  console.log(postsData)
-
+  })
 }
 
 

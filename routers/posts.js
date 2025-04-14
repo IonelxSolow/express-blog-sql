@@ -8,7 +8,7 @@ const postsControllers = require("../controllers/postsControllers")
 router.get('/', postsControllers.index);
 
 //show
-router.get('/:slug', postsControllers.show);
+router.get('/:id', postsControllers.show);
 
 //create
 router.post('/', postsControllers.create)
@@ -23,3 +23,4 @@ router.patch('/:slug', postsControllers.modify)
 router.delete('/:slug', postsControllers.destroy)
 
 module.exports = router;
+
