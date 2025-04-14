@@ -14,10 +14,10 @@ router.get('/:id', postsControllers.show);
 router.post('/', postsControllers.create)
 
 //update
-router.put('/:slug', postsControllers.update)
+router.put('/:id', postsControllers.update)
 
 //modify
-router.patch('/:slug', postsControllers.modify)
+router.patch('/:id', postsControllers.modify)
 
 //destroy
 router.delete('/:id', postsControllers.destroy)

@@ -6,7 +6,7 @@ const posts = require('../data/postsData') */
 function index(req, res) { 
   const sql = "SELECT * FROM posts";
   connection.query(sql, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return res.status(500).json({ error: 'Database query failed' });
     res.json(result);
   });
 }
@@ -27,7 +27,7 @@ function show(req, res) {
   `;
 
   connection.query(sql, [postId], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return res.status(500).json({ error: 'Database query failed' });
 
     if (result.length === 0) {
       return res.status(404).json({
@@ -46,79 +46,103 @@ function show(req, res) {
 
 
 function create(req, res) {
-  const title = req.body.title;
-  const newSlug = title.toLowerCase().replace(/\s+/g, '-');
+  const { title, content, image } = req.body;
 
-  const newPost = {
-    title: title,
-    slug: newSlug,
-    content: req.body.content,
-    image: req.body.image,
-    tags: req.body.tags
-  }
+  const sql = `
+    INSERT INTO posts (title, content, image) 
+    VALUES (?, ?, ?)
+  `;
 
-  postsData.push(newPost);
+  connection.query(sql, [title, content, image], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
 
-  console.log(postsData)
+    // recupera il post appena creato
+    const postId = result.insertId;
+    const selectSql = "SELECT * FROM posts WHERE id = ?";
 
-  res.status(201);
-  res.json(newPost)
-
-  /*  res.send('crea un post') */
+    connection.query(selectSql, [postId], (err, [post]) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json(post);
+    });
+  });
 }
 
 function update(req, res) {
-  const postSlug = req.params.slug
-  const findPost = postsData.find(post => post.slug === postSlug)
-  if (!findPost) {
-    return res.status(404).json({
-      error: '404 Not Found',
-      message: 'Post not found'
-    })
-  }
-  findPost.title = req.body.title;
-  findPost.slug = req.body.slug;
-  findPost.content = req.body.content;
-  findPost.image = req.body.image;
-  findPost.tags = req.body.tags;
+  const postId = req.params.id;
+  const { title, content, image } = req.body;
 
-  console.log(findPost)
+  const sql = `
+    UPDATE posts 
+    SET title = ?, content = ?, image = ?
+    WHERE id = ?
+  `;
 
-  res.json(findPost)
-  /* res.send(`Aggiorna il post con id: ${req.params.id}`) */
+  connection.query(sql, [title, content, image, postId], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: '404 Not Found',
+        message: 'Post not found'
+      });
+    }
+
+    // recupera il post aggiornato
+    const selectSql = "SELECT * FROM posts WHERE id = ?";
+    connection.query(selectSql, [postId], (err, [post]) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(post);
+    });
+  });
 }
 
 
 function modify(req, res) {
-  const postSlug = req.params.slug
-  const findPost = postsData.find(post => post.slug === postSlug)
-  if (!findPost) {
-    return res.status(404).json({
-      error: '404 Not Found',
-      message: 'Post not found'
-    })
-  }
+  const postId = req.params.id;
+  const updates = {};
+  const values = [];
+
+  // costruisce dinamicamente la query in base ai campi forniti
   if (req.body.title) {
-    findPost.title = req.body.title;
+    updates.title = '?';
+    values.push(req.body.title);
   }
   if (req.body.content) {
-    findPost.slug = req.body.slug
-  }
-  if (req.body.content) {
-    findPost.content = req.body.content
+    updates.content = '?';
+    values.push(req.body.content);
   }
   if (req.body.image) {
-    findPost.content = req.body.image
-  }
-  if (req.body.tags) {
-    findPost.tags = req.body.tags
+    updates.image = '?';
+    values.push(req.body.image);
   }
 
+  // se non ci sono campi da aggiornare
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
 
-  console.log(findPost)
+  // costruisce la query SQL
+  const setClauses = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+  const sql = `UPDATE posts SET ${setClauses} WHERE id = ?`;
+  values.push(postId);
 
-  res.json(findPost)
-  /* res.send(`modificato il post con id: ${req.params.id}`) */
+  connection.query(sql, values, (err, result) => {
+    if (err) return res.status(500).json({ error: 'Query failed' });
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        error: '404 Not Found',
+        message: 'Post not found'
+      });
+    }
+
+    // recupera il post modificato
+    const selectSql = "SELECT * FROM posts WHERE id = ?";
+    connection.query(selectSql, [postId], (err, [post]) => {
+      if (err) return res.status(500).json({ error: 'Query failed' });
+      res.json(post);
+    });
+  });
 }
 
 function destroy(req, res) {
