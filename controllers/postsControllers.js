@@ -10,9 +10,21 @@ function index(req, res) {
     res.json(result);
   });
 }
+
 function show(req, res) {
-  const postId = req.params.id; // cambiamo da slug a id
-  const sql = "SELECT * FROM posts WHERE id = ?";
+  const postId = Number(req.params.id);
+
+
+  const sql = `
+    SELECT 
+      posts.*,
+      GROUP_CONCAT(tags.label) as tags
+    FROM posts 
+    LEFT JOIN post_tag ON posts.id = post_tag.post_id
+    LEFT JOIN tags ON post_tag.tag_id = tags.id
+    WHERE posts.id = ?
+    GROUP BY posts.id
+  `;
 
   connection.query(sql, [postId], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -24,7 +36,11 @@ function show(req, res) {
       });
     }
 
-    res.json(result[0]);
+    
+    const post = result[0];
+    post.tags = post.tags ? post.tags.split(',') : [];
+
+    res.json(post);
   });
 }
 
